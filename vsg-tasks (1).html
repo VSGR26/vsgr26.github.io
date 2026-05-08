@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>VSG Ricambi — Task Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #0e0e0f;
+  --surface: #161617;
+  --surface2: #1e1e1f;
+  --border: #2a2a2c;
+  --border2: #3a3a3c;
+  --text: #f0ede8;
+  --text2: #8a8785;
+  --text3: #5a5855;
+  --accent: #e8622a;
+  --accent2: #f0a050;
+  --interno: #2ebd7a;
+  --radius: 10px;
+  --font-head: 'Syne', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  min-height: 100vh;
+  padding-bottom: 100px;
+}
+
+/* LOGIN */
+#login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.login-box {
+  width: 100%;
+  max-width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 24px;
+}
+.login-logo {
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+.login-logo span { color: var(--accent); }
+.login-sub {
+  font-size: 12px;
+  color: var(--text3);
+  margin-bottom: 28px;
+}
+.login-error {
+  background: rgba(224,80,80,0.1);
+  border: 1px solid rgba(224,80,80,0.3);
+  color: #e05050;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  display: none;
+}
+.login-error.show { display: block; }
+#app { display: none; }
+
+/* HEADER */
+.header {
+  padding: 20px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 100;
+}
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.logo {
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.5px;
+}
+.logo span { color: var(--accent); }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.btn-icon {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.btn-icon:hover { background: var(--border); color: var(--text); }
+.sync-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--interno);
+  box-shadow: 0 0 5px rgba(46,189,122,0.5);
+  transition: background 0.3s;
+}
+.sync-dot.syncing { background: var(--accent2); box-shadow: 0 0 5px rgba(240,160,80,0.5); animation: pulse 1s infinite; }
+.sync-dot.error { background: #e05050; box-shadow: none; animation: none; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* TABS */
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0 2px;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text3);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  letter-spacing: 0.02em;
+}
+.tab.active {
+  background: var(--surface2);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+/* MAIN */
+.main { padding: 16px; }
+
+/* SECTION HEADERS */
+.section-label {
+  font-family: var(--font-head);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin: 20px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.count-badge {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* CARDS */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.card:active { border-color: var(--border2); }
+.card-header {
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.card-check {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border2);
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.card-check.done {
+  background: var(--interno);
+  border-color: var(--interno);
+  color: #fff;
+  font-size: 10px;
+}
+.card-main { flex: 1; min-width: 0; }
+.card-title {
+  font-family: var(--font-head);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 5px;
+}
+.card-title.done-text { text-decoration: line-through; color: var(--text3); }
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+.badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+  font-weight: 500;
+}
+.badge-cliente { background: rgba(58,123,213,0.15); color: #6aa3f0; border: 1px solid rgba(58,123,213,0.25); }
+.badge-interno { background: rgba(46,189,122,0.12); color: #4ed494; border: 1px solid rgba(46,189,122,0.2); }
+.badge-quick { background: rgba(232,98,42,0.15); color: var(--accent); border: 1px solid rgba(232,98,42,0.25); }
+.badge-bloccato { background: rgba(100,100,100,0.15); color: var(--text3); border: 1px solid var(--border); }
+.badge-tag { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); cursor: pointer; }
+.badge-tag:hover { border-color: var(--border2); color: var(--text); }
+.date-chip {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.date-chip.attesa { color: #f0a050; }
+.date-chip.scadenza { color: #e05050; }
+.card-expand-icon {
+  color: var(--text3);
+  font-size: 12px;
+  margin-top: 3px;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.card-expand-icon.open { transform: rotate(180deg); }
+
+/* EXPANDED BODY */
+.card-body {
+  display: none;
+  padding: 0 12px 12px;
+  border-top: 1px solid var(--border);
+}
+.card-body.open { display: block; }
+.card-note {
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 10px 0 8px;
+}
+
+/* SUBTASKS */
+.subtask-list { margin-top: 4px; }
+.subtask {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.subtask:last-child { border-bottom: none; }
+.subtask-check {
+  width: 15px; height: 15px;
+  border: 1.5px solid var(--border2);
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.subtask-check.done { background: var(--interno); border-color: var(--interno); color: #fff; font-size: 9px; }
+.subtask-content { flex: 1; min-width: 0; }
+.subtask-text { font-size: 12px; line-height: 1.4; margin-bottom: 3px; }
+.subtask-text.done-text { text-decoration: line-through; color: var(--text3); }
+.subtask-meta { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* PROGRESS */
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.progress-bar-wrap {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--interno);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+.progress-pct {
+  font-size: 10px;
+  color: var(--text3);
+  min-width: 28px;
+  text-align: right;
+}
+
+/* AZIONABILE DOT */
+.azionabile-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--interno);
+  flex-shrink: 0;
+  margin-top: 5px;
+  box-shadow: 0 0 6px rgba(46,189,122,0.5);
+}
+
+/* FAB */
+.fab {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 24px;
+  border: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px rgba(232,98,42,0.4);
+  z-index: 200;
+  transition: transform 0.15s;
+}
+.fab:active { transform: scale(0.94); }
+
+/* MODAL */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 300;
+  align-items: flex-end;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  padding: 20px 16px 40px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-title {
+  font-family: var(--font-head);
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.form-group { margin-bottom: 14px; }
+.form-label {
+  font-size: 11px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 5px;
+  display: block;
+}
+.form-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  outline: none;
+}
+.form-input:focus { border-color: var(--border2); }
+.form-select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  outline: none;
+  appearance: none;
+}
+.form-row { display: flex; gap: 10px; }
+.form-row .form-group { flex: 1; }
+.btn-primary {
+  width: 100%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-family: var(--font-head);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+.btn-cancel {
+  width: 100%;
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 6px;
+}
+.subtask-editor {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 8px;
+  margin-bottom: 6px;
+}
+.subtask-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 5px;
+}
+.subtask-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  outline: none;
+}
+.btn-add-sub {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 4px;
+}
+.btn-remove { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 14px; padding: 2px; }
+.btn-delete { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 13px; padding: 3px 6px; }
+.btn-delete:hover { color: #e05050; }
+
+/* CALENDARIO */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-top: 10px;
+}
+.cal-day-name {
+  text-align: center;
+  font-size: 10px;
+  color: var(--text3);
+  padding: 4px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.cal-day {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text2);
+  background: var(--surface);
+  position: relative;
+  cursor: pointer;
+}
+.cal-day.today { background: var(--accent); color: #fff; font-weight: 700; }
+.cal-day.other-month { color: var(--text3); background: transparent; }
+.cal-dots { display: flex; gap: 2px; position: absolute; bottom: 3px; }
+.cal-dot { width: 4px; height: 4px; border-radius: 50%; }
+.cal-dot.attesa { background: var(--accent2); }
+.cal-dot.scadenza { background: #e05050; }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cal-month-title { font-family: var(--font-head); font-size: 15px; font-weight: 700; }
+.cal-tooltip {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 12px;
+  font-size: 12px;
+}
+.cal-event {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.cal-event:last-child { border-bottom: none; }
+
+/* TAG VIEW */
+.tag-filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.tag-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tag-btn.active { border-color: var(--accent); color: var(--accent); }
+
+/* PRIO DOT */
+.prio-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 3px; }
+.prio-alta { background: #e05050; }
+.prio-media { background: var(--accent2); }
+.prio-bassa { background: var(--text3); }
+
+.empty { text-align: center; color: var(--text3); padding: 40px 20px; font-size: 12px; }
+#import-input { display: none; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">VSG<span>.</span>tasks</div>
+    <div class="login-sub">Accesso riservato</div>
+    <div class="login-error" id="login-error"></div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="l-email" type="email" placeholder="la tua email" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="l-password" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">Entra</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">VSG<span>.</span>tasks</div>
+      <div class="header-actions">
+        <div class="sync-dot" id="sync-dot" title="Stato sincronizzazione"></div>
+        <button class="btn-icon" onclick="exportJSON()" title="Esporta JSON">⬇</button>
+        <label class="btn-icon" title="Importa JSON" style="cursor:pointer">
+          ⬆<input type="file" id="import-input" accept=".json" onchange="importJSON(event)">
+        </label>
+        <button class="btn-icon" onclick="doLogout()" title="Esci" style="font-size:13px">⏻</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('adesso')">⚡ Adesso</button>
+      <button class="tab" onclick="switchTab('settimana')">📅 Settimana</button>
+      <button class="tab" onclick="switchTab('backlog')">📦 Backlog</button>
+      <button class="tab" onclick="switchTab('tag')">🏷 Tag</button>
+      <button class="tab" onclick="switchTab('calendario')">🗓 Calendario</button>
+    </div>
+  </div>
+
+  <div class="main" id="main-content"></div>
+
+  <button class="fab" onclick="openModal()">+</button>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOnBg(event)">
+  <div class="modal">
+    <div class="modal-title">
+      <span>Nuova attività</span>
+      <button class="btn-icon" onclick="closeModal()" style="width:28px;height:28px;font-size:14px;">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Titolo</label>
+      <input class="form-input" id="f-titolo" type="text" placeholder="Es. Coperchio G30 per Benjamin">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tipo</label>
+      <select class="form-select" id="f-tipo">
+        <option value="cliente">👤 Cliente</option>
+        <option value="interno">🔧 Interno</option>
+        <option value="quick">⚡ Quick</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Priorità</label>
+      <select class="form-select" id="f-priorita">
+        <option value="alta">🔴 Alta</option>
+        <option value="media" selected>🟡 Media</option>
+        <option value="bassa">⚫ Bassa</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Settimana</label>
+      <select class="form-select" id="f-settimana">
+        <option value="questa">Questa settimana</option>
+        <option value="prossima">Prossima settimana</option>
+        <option value="dopo">Dopo</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">⏳ Attesa fino al</label>
+        <input class="form-input" id="f-attesa" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">📌 Scadenza</label>
+        <input class="form-input" id="f-scadenza" type="date">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Note</label>
+      <input class="form-input" id="f-note" type="text" placeholder="Dettagli opzionali">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Sotto-obiettivi</label>
+      <div id="subtasks-editor"></div>
+      <button class="btn-add-sub" onclick="addSubtaskField()">+ Aggiungi sotto-obiettivo</button>
+    </div>
+    <button class="btn-primary" onclick="saveTask()">Salva attività</button>
+    <button class="btn-cancel" onclick="closeModal()">Annulla</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://anqhvckltcxvwfzhzhtm.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFucWh2Y2tsdGN4dndmemh6aHRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMjc4MTIsImV4cCI6MjA5MzgwMzgxMn0.q2ydMc2Yc_nohQFCzNDy-an01egiGbD3ocUGmTJyGrY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let tasks = [];
+let currentTab = 'adesso';
+let calMonth = new Date().getMonth();
+let calYear = new Date().getFullYear();
+let selectedCalDay = null;
+let activeTag = null;
+let editingTaskId = null;
+let subtaskFields = [];
+let currentUserId = null;
+let saveTimeout = null;
+
+function today() { return new Date().toISOString().split('T')[0]; }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate()+n); return x.toISOString().split('T')[0]; }
+function getNextWeekend() { const d=new Date(); const day=d.getDay(); const diff=day===0?6:6-day; d.setDate(d.getDate()+diff); return d.toISOString().split('T')[0]; }
+
+function isAzionabile(task) {
+  if (task.tipo === 'quick') return true;
+  if (!task.attesa) return true;
+  return task.attesa <= today();
+}
+function isSubAzionabile(sub) {
+  if (!sub.attesa) return true;
+  return sub.attesa <= today();
+}
+
+// SYNC DOT
+function setSyncState(state) {
+  const dot = document.getElementById('sync-dot');
+  if (!dot) return;
+  dot.className = 'sync-dot' + (state !== 'ok' ? ' ' + state : '');
+  dot.title = state === 'ok' ? 'Sincronizzato' : state === 'syncing' ? 'Sincronizzazione...' : 'Errore di sync';
+}
+
+// AUTH
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim();
+  const pwd = document.getElementById('l-password').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-error');
+  err.classList.remove('show');
+  btn.textContent = 'Accesso...';
+  btn.disabled = true;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pwd });
+  if (error) {
+    err.textContent = 'Email o password errati.';
+    err.classList.add('show');
+    btn.textContent = 'Entra';
+    btn.disabled = false;
+    return;
+  }
+  currentUserId = data.user.id;
+  showApp();
+  await loadFromDB();
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('l-password').value = '';
+}
+
+async function checkSession() {
+  const { data } = await sb.auth.getSession();
+  if (data.session) {
+    currentUserId = data.session.user.id;
+    showApp();
+    await loadFromDB();
+  }
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+}
+
+// DB
+async function loadFromDB() {
+  setSyncState('syncing');
+  const { data, error } = await sb
+    .from('tasks')
+    .select('data')
+    .eq('user_id', currentUserId)
+    .single();
+
+  if (error && error.code === 'PGRST116') {
+    // Nessuna riga ancora — prima volta, carica dati demo
+    tasks = getInitialData();
+    await saveToDBNow();
+  } else if (error) {
+    setSyncState('error');
+    // Fallback localStorage
+    const raw = localStorage.getItem('vsg_tasks_v1');
+    if (raw) { try { tasks = JSON.parse(raw); } catch(e) { tasks = getInitialData(); } }
+    else { tasks = getInitialData(); }
+  } else {
+    tasks = data.data || [];
+  }
+  setSyncState('ok');
+  render();
+}
+
+async function saveToDBNow() {
+  if (!currentUserId) return;
+  setSyncState('syncing');
+  // localStorage come backup locale
+  localStorage.setItem('vsg_tasks_v1', JSON.stringify(tasks));
+
+  const { error } = await sb
+    .from('tasks')
+    .upsert({ user_id: currentUserId, data: tasks, updated_at: new Date().toISOString() },
+             { onConflict: 'user_id' });
+
+  setSyncState(error ? 'error' : 'ok');
+}
+
+function saveData() {
+  // Debounce: aspetta 800ms dall'ultima modifica prima di salvare
+  localStorage.setItem('vsg_tasks_v1', JSON.stringify(tasks));
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveToDBNow, 800);
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vsg_tasks_' + today() + '.json';
+  a.click();
+}
+function importJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      tasks = JSON.parse(ev.target.result);
+      await saveToDBNow();
+      render();
+    } catch(err) { alert('File JSON non valido'); }
+  };
+  reader.readAsText(file);
+}
+
+// DATA INIZIALE
+function getInitialData() {
+  return [
+    { id:'c1', tipo:'cliente', titolo:'Coperchio G30 — Benjamin', priorita:'alta', settimana:'questa', attesa:getNextWeekend(), scadenza:'', note:'Aspettare il weekend per la lavorazione in alluminio.', subtasks:[], done:false, creato:today() },
+    { id:'c2', tipo:'cliente', titolo:'Collettore Franco', priorita:'alta', settimana:'questa', attesa:addDays(today(),5), scadenza:'', note:'Pacco parte lunedì. Usare suo pezzo per le misure.', subtasks:[
+      { id:'s1', testo:'Stampare venturi per carburatore', tags:['stampa 3d'], done:false, attesa:'', scadenza:'' },
+      { id:'s2', testo:'Realizzare collettore aggiuntivo', tags:['stampa 3d','alluminio'], done:false, attesa:addDays(today(),5), scadenza:'' },
+      { id:'s3', testo:'Realizzare carburatore', tags:['stampa 3d'], done:false, attesa:addDays(today(),5), scadenza:'' },
+      { id:'s4', testo:'Verificare materiale boccola carburatore', tags:['acquisto'], done:false, attesa:'', scadenza:'' }
+    ], done:false, creato:today() },
+    { id:'i1', tipo:'interno', titolo:'Alberino pompa acqua autoprodotto', priorita:'media', settimana:'questa', attesa:'', scadenza:'', note:'Provare appena c\'è tempo.', subtasks:[], done:false, creato:today() },
+    { id:'c3', tipo:'cliente', titolo:'Ingranaggi pompa acqua', priorita:'alta', settimana:'questa', attesa:addDays(today(),7), scadenza:'', note:'2 pacchi non ancora spediti. 2 tipi diversi.', subtasks:[
+      { id:'s5', testo:'Ingranaggi tipo A', tags:['alluminio'], done:false, attesa:addDays(today(),7), scadenza:'' },
+      { id:'s6', testo:'Ingranaggi tipo B', tags:['alluminio'], done:false, attesa:addDays(today(),10), scadenza:'' }
+    ], done:false, creato:today() },
+    { id:'i2', tipo:'interno', titolo:'Testa Eurocilindro', priorita:'media', settimana:'questa', attesa:'', scadenza:'', note:'Verificare misure e decidere se comprare.', subtasks:[
+      { id:'s7', testo:'Verificare misure testa', tags:['misurazioni'], done:false, attesa:'', scadenza:'' },
+      { id:'s8', testo:'Acquistare se idonea', tags:['acquisto'], done:false, attesa:'', scadenza:'' }
+    ], done:false, creato:today() },
+    { id:'c4', tipo:'cliente', titolo:'Carburatore da 19 — ordine Svezia', priorita:'alta', settimana:'questa', attesa:'', scadenza:addDays(today(),4), note:'In corso. Venderò 2 collettori con il carburatore.', subtasks:[
+      { id:'s9', testo:'Trovare carburatore da 19', tags:['acquisto'], done:false, attesa:'', scadenza:addDays(today(),4) },
+      { id:'s10', testo:'Preparare i 2 collettori', tags:['spedizione'], done:false, attesa:'', scadenza:addDays(today(),4) }
+    ], done:false, creato:today() },
+    { id:'i3', tipo:'interno', titolo:'Prototipo coperchio pompa acqua', priorita:'alta', settimana:'questa', attesa:'', scadenza:addDays(today(),7), note:'Stampare entro la settimana, poi test dal meccanico.', subtasks:[
+      { id:'s11', testo:'Stampare prototipo', tags:['stampa 3d'], done:false, attesa:'', scadenza:addDays(today(),7) },
+      { id:'s12', testo:'Test dal meccanico', tags:['test'], done:false, attesa:'', scadenza:'' },
+      { id:'s13', testo:'Portargli pezzi da pulire', tags:['logistica'], done:false, attesa:'', scadenza:'' }
+    ], done:false, creato:today() },
+    { id:'c5', tipo:'cliente', titolo:'Guide pinzatrice — officina', priorita:'alta', settimana:'questa', attesa:'', scadenza:'', note:'Stampare oggi se arriva ok.', subtasks:[
+      { id:'s14', testo:'Attendere ok cliente', tags:['cliente'], done:false, attesa:'', scadenza:'' },
+      { id:'s15', testo:'Stampare guide', tags:['stampa 3d'], done:false, attesa:'', scadenza:'' }
+    ], done:false, creato:today() },
+    { id:'q1', tipo:'quick', titolo:'Trovare pistone Vespa T5', priorita:'alta', settimana:'questa', attesa:'', scadenza:today(), note:'Farlo oggi.', subtasks:[], done:false, creato:today() },
+    { id:'c6', tipo:'cliente', titolo:'Vespe e Ape 50 da sistemare', priorita:'media', settimana:'prossima', attesa:addDays(today(),5), scadenza:'', note:'2 vespe + 1 ape 50.', subtasks:[], done:false, creato:today() },
+    { id:'i4', tipo:'interno', titolo:'Collettore per Fifty', priorita:'bassa', settimana:'dopo', attesa:'', scadenza:'', note:'Sviluppo senza impegno.', subtasks:[], done:false, creato:today() },
+    { id:'i5', tipo:'interno', titolo:'Scansione 3D portanumero', priorita:'bassa', settimana:'dopo', attesa:'', scadenza:'', note:'Scansionare e modellare in 3D.', subtasks:[
+      { id:'s16', testo:'Scansionare pezzo', tags:['3d scan'], done:false, attesa:'', scadenza:'' },
+      { id:'s17', testo:'Disegnare in CAD', tags:['cad'], done:false, attesa:'', scadenza:'' }
+    ], done:false, creato:today() },
+    { id:'i6', tipo:'interno', titolo:'Coperchietto alluminio pompa T4', priorita:'bassa', settimana:'dopo', attesa:'', scadenza:'', note:'Coperchietto in alluminio.', subtasks:[
+      { id:'s18', testo:'Disegnare coperchietto', tags:['cad','alluminio'], done:false, attesa:'', scadenza:'' },
+      { id:'s19', testo:'Produrre prototipo', tags:['alluminio'], done:false, attesa:'', scadenza:'' }
+    ], done:false, creato:today() },
+    { id:'i7', tipo:'interno', titolo:'Carter frizione e volano trasparente — Morini', priorita:'bassa', settimana:'dopo', attesa:'', scadenza:'', note:'Progetto Morini.', subtasks:[
+      { id:'s20', testo:'Carter frizione', tags:['stampa 3d','cad'], done:false, attesa:'', scadenza:'' },
+      { id:'s21', testo:'Volano trasparente', tags:['stampa 3d','cad'], done:false, attesa:'', scadenza:'' }
+    ], done:false, creato:today() },
+    { id:'i8', tipo:'interno', titolo:'Cestello frizione alleggerito — Yamaha XT 600', priorita:'media', settimana:'prossima', attesa:'', scadenza:'', note:'Design alleggerito.', subtasks:[
+      { id:'s22', testo:'Disegnare cestello', tags:['cad','alluminio'], done:false, attesa:'', scadenza:'' },
+      { id:'s23', testo:'Prototipo e test', tags:['alluminio','test'], done:false, attesa:'', scadenza:'' }
+    ], done:false, creato:today() },
+    { id:'i9', tipo:'interno', titolo:'Pacco lamellare Rizzato 122', priorita:'media', settimana:'prossima', attesa:'', scadenza:'', note:'Disegnare pacco lamellare.', subtasks:[
+      { id:'s24', testo:'Documentazione e misure', tags:['misurazioni'], done:false, attesa:'', scadenza:'' },
+      { id:'s25', testo:'Disegnare in CAD', tags:['cad'], done:false, attesa:'', scadenza:'' }
+    ], done:false, creato:today() }
+  ];
+}
+
+// RENDER
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['adesso','settimana','backlog','tag','calendario'][i] === tab);
+  });
+  render();
+}
+
+function render() {
+  const el = document.getElementById('main-content');
+  if (!el) return;
+  if (currentTab === 'adesso') el.innerHTML = renderAdesso();
+  else if (currentTab === 'settimana') el.innerHTML = renderSettimana();
+  else if (currentTab === 'backlog') el.innerHTML = renderBacklog();
+  else if (currentTab === 'tag') el.innerHTML = renderTag();
+  else if (currentTab === 'calendario') el.innerHTML = renderCalendario();
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}`;
+}
+
+function cardHTML(task) {
+  const az = isAzionabile(task);
+  const total = task.subtasks.length;
+  const doneCount = task.subtasks.filter(s => s.done).length;
+  const pct = total > 0 ? Math.round((doneCount / total) * 100) : (task.done ? 100 : 0);
+
+  const typeBadge = task.tipo === 'cliente'
+    ? '<span class="badge badge-cliente">cliente</span>'
+    : task.tipo === 'quick'
+    ? '<span class="badge badge-quick">quick</span>'
+    : '<span class="badge badge-interno">interno</span>';
+
+  const prioDot = `<span class="prio-dot prio-${task.priorita}"></span>`;
+  const attesaChip = task.attesa ? `<span class="date-chip attesa">⏳ ${formatDate(task.attesa)}</span>` : '';
+  const scadChip = task.scadenza ? `<span class="date-chip scadenza">📌 ${formatDate(task.scadenza)}</span>` : '';
+  const bloccatoBadge = !az ? '<span class="badge badge-bloccato">🔒 bloccato</span>' : '';
+
+  const progressHTML = total > 0 ? `
+    <div class="progress-wrap">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" style="width:${pct}%"></div>
+      </div>
+      <span class="progress-pct">${pct}%</span>
+    </div>` : '';
+
+  const subtasksHTML = task.subtasks.map(s => {
+    const subAz = isSubAzionabile(s);
+    const tagsHTML = (s.tags||[]).map(t => `<span class="badge badge-tag" onclick="filterByTag('${t}')">${t}</span>`).join('');
+    const subAttesa = s.attesa ? `<span class="date-chip attesa">⏳ ${formatDate(s.attesa)}</span>` : '';
+    const subScad = s.scadenza ? `<span class="date-chip scadenza">📌 ${formatDate(s.scadenza)}</span>` : '';
+    return `
+      <div class="subtask">
+        ${subAz && !s.done ? '<div class="azionabile-dot"></div>' : ''}
+        <div class="subtask-check ${s.done?'done':''}" onclick="toggleSubtask('${task.id}','${s.id}')">${s.done?'✓':''}</div>
+        <div class="subtask-content">
+          <div class="subtask-text ${s.done?'done-text':''}">${s.testo}</div>
+          <div class="subtask-meta">${tagsHTML}${subAttesa}${subScad}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="card" id="card-${task.id}">
+      <div class="card-header" onclick="toggleCard('${task.id}')">
+        <div class="card-check ${task.done?'done':''}" onclick="toggleTask(event,'${task.id}')">${task.done?'✓':''}</div>
+        <div class="card-main">
+          <div class="card-title ${task.done?'done-text':''}">${prioDot}${task.titolo}</div>
+          <div class="card-meta">${typeBadge}${bloccatoBadge}${attesaChip}${scadChip}${total>0?`<span style="font-size:10px;color:var(--text3)">${doneCount}/${total}</span>`:''}</div>
+          ${progressHTML}
+        </div>
+        <div class="card-expand-icon" id="icon-${task.id}">▾</div>
+      </div>
+      <div class="card-body" id="body-${task.id}">
+        ${task.note ? `<div class="card-note">${task.note}</div>` : ''}
+        ${subtasksHTML ? `<div class="subtask-list">${subtasksHTML}</div>` : ''}
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <button class="btn-add-sub" style="flex:1" onclick="openEditModal('${task.id}')">✎ Modifica</button>
+          <button class="btn-delete" onclick="deleteTask('${task.id}')">🗑</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderAdesso() {
+  const quick = tasks.filter(t => t.tipo === 'quick' && !t.done);
+  const az = tasks.filter(t => t.tipo !== 'quick' && isAzionabile(t) && !t.done)
+    .sort((a,b) => ({alta:0,media:1,bassa:2}[a.priorita] - {alta:0,media:1,bassa:2}[b.priorita]));
+  const blk = tasks.filter(t => !isAzionabile(t) && !t.done);
+  let h = '';
+  if (quick.length) h += `<div class="section-label">⚡ Quick tasks <span class="count-badge">${quick.length}</span></div>` + quick.map(cardHTML).join('');
+  if (az.length) h += `<div class="section-label">✅ Puoi fare adesso <span class="count-badge">${az.length}</span></div>` + az.map(cardHTML).join('');
+  if (blk.length) h += `<div class="section-label">🔒 In attesa <span class="count-badge">${blk.length}</span></div>` + blk.map(cardHTML).join('');
+  return h || '<div class="empty">Niente da fare! 🎉</div>';
+}
+
+function renderSettimana() {
+  const questa = tasks.filter(t => t.settimana === 'questa' && !t.done);
+  const prossima = tasks.filter(t => t.settimana === 'prossima' && !t.done);
+  let h = '';
+  if (questa.length) h += `<div class="section-label">Questa settimana <span class="count-badge">${questa.length}</span></div>` + questa.map(cardHTML).join('');
+  if (prossima.length) h += `<div class="section-label">Prossima settimana <span class="count-badge">${prossima.length}</span></div>` + prossima.map(cardHTML).join('');
+  return h || '<div class="empty">Nessuna attività pianificata.</div>';
+}
+
+function renderBacklog() {
+  const dopo = tasks.filter(t => t.settimana === 'dopo' && !t.done);
+  const completate = tasks.filter(t => t.done);
+  let h = '';
+  if (dopo.length) h += `<div class="section-label">📦 Backlog <span class="count-badge">${dopo.length}</span></div>` + dopo.map(cardHTML).join('');
+  if (completate.length) h += `<div class="section-label">✅ Completate <span class="count-badge">${completate.length}</span></div>` + completate.map(cardHTML).join('');
+  return h || '<div class="empty">Backlog vuoto.</div>';
+}
+
+function getAllTags() {
+  const tags = new Set();
+  tasks.forEach(t => t.subtasks.forEach(s => (s.tags||[]).forEach(tag => tags.add(tag))));
+  return [...tags].sort();
+}
+
+function renderTag() {
+  const allTags = getAllTags();
+  if (!activeTag && allTags.length) activeTag = allTags[0];
+  const tagBar = `<div class="tag-filter-bar">${allTags.map(t => `<button class="tag-btn ${t===activeTag?'active':''}" onclick="setTag('${t}')">${t}</button>`).join('')}</div>`;
+  if (!activeTag) return tagBar + '<div class="empty">Nessun tag trovato.</div>';
+  const subs = [];
+  tasks.forEach(task => task.subtasks.forEach(s => {
+    if ((s.tags||[]).includes(activeTag) && !s.done) subs.push({...s, _task:task});
+  }));
+  subs.sort((a,b) => ({alta:0,media:1,bassa:2}[a._task.priorita] - {alta:0,media:1,bassa:2}[b._task.priorita]));
+  const items = subs.map(s => `
+    <div class="card">
+      <div class="card-header" style="cursor:default">
+        ${isSubAzionabile(s) ? '<div class="azionabile-dot"></div>' : ''}
+        <div class="subtask-check ${s.done?'done':''}" onclick="toggleSubtask('${s._task.id}','${s.id}')">${s.done?'✓':''}</div>
+        <div class="card-main">
+          <div class="card-title" style="font-size:13px">${s.testo}</div>
+          <div class="card-meta">
+            <span class="badge ${s._task.tipo==='cliente'?'badge-cliente':'badge-interno'}">${s._task.titolo}</span>
+            ${s.attesa?`<span class="date-chip attesa">⏳ ${formatDate(s.attesa)}</span>`:''}
+            ${s.scadenza?`<span class="date-chip scadenza">📌 ${formatDate(s.scadenza)}</span>`:''}
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+  return tagBar + (items || '<div class="empty">Nessun sotto-obiettivo con questo tag.</div>');
+}
+
+function renderCalendario() {
+  const months = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  const dayNames = ['L','M','M','G','V','S','D'];
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay = new Date(calYear, calMonth+1, 0);
+  const startDow = (firstDay.getDay()+6)%7;
+  const todayStr = today();
+  const eventsByDay = {};
+  tasks.forEach(task => {
+    const add = (d,type,label) => { if(!d)return; if(!eventsByDay[d])eventsByDay[d]=[]; eventsByDay[d].push({type,label}); };
+    add(task.attesa,'attesa',task.titolo); add(task.scadenza,'scadenza',task.titolo);
+    task.subtasks.forEach(s => { add(s.attesa,'attesa',`${task.titolo}: ${s.testo}`); add(s.scadenza,'scadenza',`${task.titolo}: ${s.testo}`); });
+  });
+  let h = `<div class="cal-nav">
+    <button class="btn-icon" onclick="calPrev()" style="width:30px;height:30px;font-size:14px">‹</button>
+    <span class="cal-month-title">${months[calMonth]} ${calYear}</span>
+    <button class="btn-icon" onclick="calNext()" style="width:30px;height:30px;font-size:14px">›</button>
+  </div><div class="cal-grid">${dayNames.map(d=>`<div class="cal-day-name">${d}</div>`).join('')}`;
+  for (let i=0;i<startDow;i++) h+=`<div class="cal-day other-month"></div>`;
+  for (let d=1;d<=lastDay.getDate();d++) {
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evs = eventsByDay[ds]||[];
+    const isToday = ds===todayStr;
+    const isSel = ds===selectedCalDay;
+    h+=`<div class="cal-day ${isToday?'today':''}" style="${isSel&&!isToday?'background:var(--surface2);border:1px solid var(--border2)':''}" onclick="selectCalDay('${ds}')">
+      ${d}${evs.length?`<div class="cal-dots">${evs.map(e=>`<div class="cal-dot ${e.type}"></div>`).join('')}</div>`:''}
+    </div>`;
+  }
+  h+='</div>';
+  if (selectedCalDay) {
+    const evs = eventsByDay[selectedCalDay]||[];
+    if (evs.length) {
+      h+=`<div class="cal-tooltip"><div style="font-weight:600;margin-bottom:4px">${formatDate(selectedCalDay)}</div>${evs.map(e=>`<div class="cal-event"><div class="cal-dot ${e.type}" style="flex-shrink:0"></div><span style="color:var(--text2)">${e.type==='attesa'?'Attesa':'Scadenza'}: ${e.label}</span></div>`).join('')}</div>`;
+    } else {
+      h+=`<div class="cal-tooltip" style="color:var(--text3)">Nessun evento.</div>`;
+    }
+  }
+  h+=`<div style="display:flex;gap:12px;margin-top:14px;font-size:11px;color:var(--text3)">
+    <span><span class="cal-dot attesa" style="display:inline-block;margin-right:4px;vertical-align:middle"></span>In attesa</span>
+    <span><span class="cal-dot scadenza" style="display:inline-block;margin-right:4px;vertical-align:middle"></span>Scadenza</span>
+  </div>`;
+  return h;
+}
+
+function calPrev() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} render(); }
+function calNext() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} render(); }
+function selectCalDay(d) { selectedCalDay = selectedCalDay===d?null:d; render(); }
+
+function toggleCard(id) {
+  document.getElementById('body-'+id)?.classList.toggle('open');
+  document.getElementById('icon-'+id)?.classList.toggle('open');
+}
+function toggleTask(e,id) {
+  e.stopPropagation();
+  const t=tasks.find(t=>t.id===id);
+  if(t){t.done=!t.done;saveData();render();}
+}
+function toggleSubtask(taskId,subId) {
+  const t=tasks.find(t=>t.id===taskId);
+  if(t){const s=t.subtasks.find(s=>s.id===subId);if(s){s.done=!s.done;saveData();render();}}
+}
+function deleteTask(id) {
+  if(!confirm('Eliminare questa attività?'))return;
+  tasks=tasks.filter(t=>t.id!==id);
+  saveData();render();
+}
+
+// MODAL
+function openModal() {
+  editingTaskId=null;
+  document.getElementById('f-titolo').value='';
+  document.getElementById('f-tipo').value='interno';
+  document.getElementById('f-priorita').value='media';
+  document.getElementById('f-settimana').value='questa';
+  document.getElementById('f-attesa').value='';
+  document.getElementById('f-scadenza').value='';
+  document.getElementById('f-note').value='';
+  subtaskFields=[];
+  renderSubtaskFields();
+  document.querySelector('.modal-title span').textContent='Nuova attività';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function openEditModal(id) {
+  const t=tasks.find(t=>t.id===id);if(!t)return;
+  editingTaskId=id;
+  document.getElementById('f-titolo').value=t.titolo;
+  document.getElementById('f-tipo').value=t.tipo;
+  document.getElementById('f-priorita').value=t.priorita;
+  document.getElementById('f-settimana').value=t.settimana;
+  document.getElementById('f-attesa').value=t.attesa||'';
+  document.getElementById('f-scadenza').value=t.scadenza||'';
+  document.getElementById('f-note').value=t.note||'';
+  subtaskFields=t.subtasks.map(s=>({...s}));
+  renderSubtaskFields();
+  document.querySelector('.modal-title span').textContent='Modifica attività';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+function closeModalOnBg(e) { if(e.target===document.getElementById('modal-overlay'))closeModal(); }
+
+function renderSubtaskFields() {
+  document.getElementById('subtasks-editor').innerHTML = subtaskFields.map((s,i)=>`
+    <div class="subtask-editor">
+      <div class="subtask-row">
+        <input class="subtask-input" placeholder="Sotto-obiettivo" value="${s.testo}" oninput="subtaskFields[${i}].testo=this.value">
+        <button class="btn-remove" onclick="removeSubField(${i})">✕</button>
+      </div>
+      <div class="subtask-row">
+        <input class="subtask-input" placeholder="tag (virgola)" value="${(s.tags||[]).join(', ')}" oninput="subtaskFields[${i}].tags=this.value.split(',').map(x=>x.trim()).filter(Boolean)" style="font-size:11px;color:var(--text2)">
+        <input class="subtask-input" type="date" value="${s.attesa||''}" oninput="subtaskFields[${i}].attesa=this.value" style="width:110px;font-size:11px">
+      </div>
+    </div>`).join('');
+}
+function addSubtaskField() {
+  subtaskFields.push({id:'s'+Date.now(),testo:'',tags:[],done:false,attesa:'',scadenza:''});
+  renderSubtaskFields();
+}
+function removeSubField(i) { subtaskFields.splice(i,1); renderSubtaskFields(); }
+
+function saveTask() {
+  const titolo=document.getElementById('f-titolo').value.trim();
+  if(!titolo){alert('Inserisci un titolo');return;}
+  const existing=editingTaskId?tasks.find(t=>t.id===editingTaskId):null;
+  const task={
+    id:editingTaskId||('t'+Date.now()),
+    tipo:document.getElementById('f-tipo').value,
+    titolo,
+    priorita:document.getElementById('f-priorita').value,
+    settimana:document.getElementById('f-settimana').value,
+    attesa:document.getElementById('f-attesa').value,
+    scadenza:document.getElementById('f-scadenza').value,
+    note:document.getElementById('f-note').value.trim(),
+    subtasks:subtaskFields.map(s=>({...s})),
+    done:existing?existing.done:false,
+    creato:existing?existing.creato:today()
+  };
+  if(editingTaskId) tasks=tasks.map(t=>t.id===editingTaskId?task:t);
+  else tasks.push(task);
+  saveData();closeModal();render();
+}
+
+function setTag(t){activeTag=t;render();}
+function filterByTag(t){activeTag=t;switchTab('tag');}
+
+// AVVIO
+checkSession();
+</script>
+</body>
+</html>
